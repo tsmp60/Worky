@@ -1,0 +1,35 @@
+# Python environments and caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Machine-specific settings (model paths, search provider credentials, etc.)
+/config.json
+
+# Local application data and model offload files
+/data/*.db
+/data/*.db-*
+/data/offload/*
+!/data/offload/.gitkeep
+
+# User content and downloaded/generated model assets
+/workspace/*
+!/workspace/.gitkeep
+/models/*
+!/models/.gitkeep
+/static/generated/*
+!/static/generated/.gitkeep
+
+# Optional native builds and generated artifacts
+/sd.cpp/
+build/
+dist/
+*.log
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

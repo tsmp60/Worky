@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Worky</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/codemirror/codemirror.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/codemirror/theme/eclipse.css') }}">
+</head>
+<body data-last-page="{{ last_page }}">
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">Worky</div>
+    <nav class="tabs">
+      <button class="tab-btn" data-page="image">Image</button>
+      <button class="tab-btn" data-page="chat">Chat</button>
+      <button class="tab-btn" data-page="coder">Coder</button>
+    </nav>
+  </header>
+
+  <div class="body">
+
+    <aside class="sidebar">
+
+      <div class="sidebar-section" id="model-section">
+        <h3>Model</h3>
+        <input type="text" id="model-path-input" placeholder="No model selected">
+        <div class="button-row">
+          <button id="browse-model-btn" class="btn-secondary">Browse...</button>
+          <button id="load-model-btn" class="btn-primary">Load</button>
+        </div>
+        <div class="button-row" style="margin-top:8px">
+          <button id="unload-model-btn" class="btn-secondary">Unload</button>
+        </div>
+        <div class="model-status" id="model-status">No model loaded</div>
+      </div>
+
+      <div class="sidebar-section" id="reasoning-section">
+        <h3>Reasoning</h3>
+        <div class="reasoning-box" id="reasoning-box">
+          Model reasoning will appear here while it is thinking, for models that support it.
+        </div>
+      </div>
+
+      <div class="sidebar-section" id="history-section">
+        <div class="section-header-row">
+          <h3>History</h3>
+          <button id="new-conversation-btn" class="btn-small">New</button>
+        </div>
+        <div class="conversation-list" id="conversation-list"></div>
+      </div>
+
+      <div class="sidebar-section" id="settings-section">
+        <h3>Settings</h3>
+
+        <label class="settings-label">Search API key (optional)</label>
+        <select id="search-provider">
+          <option value="">No key, use free search</option>
+          <option value="brave">Brave Search API</option>
+        </select>
+        <input type="text" id="search-api-key" placeholder="API key">
+        <button id="save-search-settings" class="btn-small">Save search settings</button>
+
+        <label class="settings-label" style="margin-top:14px">CPU threads</label>
+        <input type="text" id="n-threads-input" placeholder="4">
+
+        <label class="settings-label">Context length (tokens)</label>
+        <input type="text" id="n-ctx-input" placeholder="4096">
+
+        <label class="settings-label">Max RAM for Hugging Face models (GB, 0 = no limit)</label>
+        <input type="text" id="max-ram-input" placeholder="0">
+        <div class="hint-text">Only applies to Hugging Face format models. A model larger than
+          this streams its extra layers from disk as needed instead of sitting fully in RAM,
+          at some speed cost. GGUF models already do the RAM-friendly thing on their own.</div>
+        <button id="save-runtime-settings" class="btn-small">Save performance settings</button>
+
+        <h4 style="margin:18px 0 8px">Chat behavior</h4>
+        <label class="settings-label">System prompt</label>
+        <textarea id="system-prompt-input" rows="4" placeholder="You are a helpful assistant. Follow the user's instructions and answer clearly."></textarea>
+        <div class="hint-text">Instructions sent before the conversation. Leave blank for no custom system prompt.</div>
+
+        <label class="settings-label" style="margin-top:12px">Chat template (optional)</label>
+        <textarea id="chat-template-input" rows="8" placeholder="&#123;&#123; range .Messages &#125;&#125;&lt;|im_start|&gt;&#123;&#123; .Role &#125;&#125;&#10;&#123;&#123; .Content &#125;&#125;&lt;|im_end|&gt;&#10;&#123;&#123; end &#125;&#125;&lt;|im_start|&gt;assistant&#10;"></textarea>
+        <div class="hint-text">Supports the common Ollama template syntax: &#123;&#123; range .Messages &#125;&#125;, &#123;&#123; .Role &#125;&#125;, &#123;&#123; .Content &#125;&#125;, and &#123;&#123; end &#125;&#125;. Leave blank to use the model's built-in template. You may paste the template body or a full Modelfile snippet.</div>
+
+        <label class="settings-label" style="margin-top:12px">Stop sequences (one per line)</label>
+        <textarea id="stop-sequences-input" rows="2" placeholder="&lt;|im_end|&gt;"></textarea>
+        <label class="settings-label" style="margin-top:12px">Temperature (0 = deterministic)</label>
+        <input type="number" id="temperature-input" min="0" max="2" step="0.1" value="0.3">
+        <button id="save-chat-settings" class="btn-small">Save chat settings</button>
+        <div class="hint-text" id="chat-settings-status" role="status"></div>
+      </div>
+
+    </aside>
+
+    <main class="content">
+
+      <section class="page" id="page-chat">
+        <div class="messages" id="chat-messages"></div>
+        <div class="composer">
+          <label class="search-toggle">
+            <input type="checkbox" id="use-search-toggle">
+            Search the web
+          </label>
+          <div class="composer-row">
+            <textarea id="chat-input" placeholder="Message Worky"></textarea>
+            <button id="chat-send-btn" class="btn-primary">Send</button>
+          </div>
+        </div>
+        <button id="handoff-btn" class="handoff-btn" title="Send this chat to another page">Send to</button>
+        <div class="handoff-menu" id="handoff-menu">
+          <button data-target="coder">Coder</button>
+          <button data-target="image">Image</button>
+        </div>
+      </section>
+
+      <section class="page" id="page-coder" style="display:none">
+        <div class="coder-workspace">
+
+          <div class="coder-tree-pane">
+            <div class="section-header-row">
+              <h4>Project</h4>
+              <select id="project-select"></select>
+              <button id="new-project-btn" class="btn-small">New</button>
+            </div>
+            <div class="file-tree" id="file-tree"></div>
+            <div class="button-row" style="margin-top:8px">
+              <input type="file" id="upload-input" style="display:none">
+              <button id="upload-btn" class="btn-secondary">Upload</button>
+              <button id="download-btn" class="btn-secondary">Download</button>
+            </div>
+          </div>
+
+          <div class="coder-editor-pane">
+            <div class="editor-path" id="editor-path">No file open</div>
+            <div class="editor-host" id="editor-host"></div>
+            <button id="save-file-btn" class="btn-secondary">Save file</button>
+          </div>
+
+          <div class="coder-activity-pane">
+            <div class="activity-log" id="activity-log"></div>
+            <div class="composer">
+              <div class="composer-row">
+                <textarea id="coder-input" placeholder="Describe what to build or change"></textarea>
+                <button id="coder-send-btn" class="btn-primary">Send</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="page" id="page-image" style="display:none">
+        <div class="image-status" id="image-status">Checking image engine...</div>
+        <div class="image-result" id="image-result"></div>
+        <div class="composer">
+          <div class="composer-row">
+            <textarea id="image-prompt" placeholder="Describe the image you want"></textarea>
+            <button id="image-generate-btn" class="btn-primary">Generate</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <div class="modal-overlay" id="browse-modal" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <span>Select a model</span>
+        <button id="browse-close-btn" class="btn-small">Close</button>
+      </div>
+      <div class="modal-shortcuts" id="browse-shortcuts"></div>
+      <div class="modal-path" id="browse-current-path"></div>
+      <div class="modal-list" id="browse-list"></div>
+      <div class="modal-footer">
+        <button id="browse-select-folder-btn" class="btn-primary">Use this folder</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='vendor/codemirror/codemirror.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/javascript/javascript.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/python/python.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/xml/xml.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/css/css.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/clike/clike.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/htmlmixed/htmlmixed.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/markdown/markdown.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/codemirror/mode/shell/shell.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

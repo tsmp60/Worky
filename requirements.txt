@@ -1,0 +1,17 @@
+flask
+requests
+
+# Text models
+llama-cpp-python
+transformers
+accelerate
+sentencepiece
+protobuf
+
+# Image models (diffusers backend, for .safetensors and Hugging Face folders)
+diffusers
+safetensors
+pillow
+
+# CPU-only PyTorch is installed separately by setup.sh using the
+# official CPU wheel index, to avoid pulling in a multi-GB CUDA build.
